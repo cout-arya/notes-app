@@ -20,10 +20,9 @@ const subjects = [
 
 const Sidebar = ({ selectedSubject, onSelectSubject }) => {
   const handleSubjectClick = (subject) => {
-    // Always call even if the same subject is clicked to allow re-render
     if (selectedSubject === subject) {
-      onSelectSubject(""); // Deselect first
-      setTimeout(() => onSelectSubject(subject), 0); // Re-select after
+      onSelectSubject(""); 
+      setTimeout(() => onSelectSubject(subject), 0); 
     } else {
       onSelectSubject(subject);
     }
