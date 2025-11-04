@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { generateAccessToken, generateRefreshToken } = require("../utils/generateTokens");
 
 // SIGNUP
 const signup = async (req, res) => {
@@ -33,8 +34,8 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
   const { email, password } = req.body;
 
-  if (!process.env.JWT_SECRET) {
-    console.error("JWT_SECRET not set");
+  if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+    console.error("JWT secrets not set");
     return res.status(500).json({ error: "Server configuration error" });
   }
 
@@ -53,26 +54,54 @@ const login = async (req, res) => {
       return res.status(400).json({ msg: "Invalid Credentials" });
     }
 
-    const payload = { user: { id: user.id } };
+    // Generate tokens
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" }, (err, token) => {
-      if (err) {
-        console.error("JWT sign error:", err);
-        return res.status(500).json({ error: "Token generation failed" });
-      }
+    // Save refresh token in DB (optional, useful for logout/revoke)
+    user.refreshToken = refreshToken;
+    await user.save();
 
-      res.json({
-        token,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-        },
-      });
+    // Send refresh token in httpOnly cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,     // set to true in production (HTTPS)
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    // Send access token + user details in response
+    res.json({
+      accessToken,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      },
     });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).send("Server error");
+  }
+};
+
+// REFRESH TOKEN
+const refresh = async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) {
+    return res.status(401).json({ error: "No refresh token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // Issue new access token
+    const newAccessToken = generateAccessToken(decoded.user);
+
+    res.json({ accessToken: newAccessToken });
+  } catch (err) {
+    console.error("Refresh token error:", err);
+    res.status(403).json({ error: "Invalid or expired refresh token" });
   }
 };
 
@@ -87,4 +116,4 @@ const me = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, me };
+module.exports = { signup, login, me, refresh };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import React from "react";
 
@@ -19,10 +19,19 @@ const Login = () => {
         password,
       });
 
-      const { token } = res.data;
-      localStorage.setItem("token", token);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      login(res.data);
+      // ✅ Backend returns: { accessToken, user }
+      const { accessToken, user } = res.data;
+
+      // ✅ Save token
+      localStorage.setItem("token", accessToken);
+
+      // ✅ Set header for future requests
+      axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+
+      // ✅ Update context (so Navbar & others know user is logged in)
+      login({ token: accessToken, user });
+
+      // ✅ Redirect
       navigate("/notes");
     } catch (err) {
       console.error("Login failed:", err.response?.data || err.message);
@@ -69,9 +78,9 @@ const Login = () => {
           </button>
           <p className="text-sm text-center text-gray-600 mt-4">
             Not a member?{" "}
-            <a href="#" className="text-purple-500 hover:underline">
+            <Link to="/signup" className="text-purple-500 hover:underline">
               Sign up now
-            </a>
+            </Link>
           </p>
         </form>
       </div>

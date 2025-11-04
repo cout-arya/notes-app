@@ -9,12 +9,13 @@ const {
 } = require("../controllers/noteController");
 const requireAuth = require("../middleware/authMiddleware");
 
+// Protect all note routes
 router.use(requireAuth);
 
 router.get("/", getNotes);
 router.post("/", createNote);
-router.patch("/:id", updateNote);   // <-- changed put to patch
-
+router.patch("/:id", updateNote);
 router.delete("/:id", deleteNote);
 router.patch("/:id/tags", updateNoteTags);
+
 module.exports = router;

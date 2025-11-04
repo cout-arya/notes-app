@@ -1,4 +1,3 @@
-// controllers/noteController.js
 const Note = require("../models/Note");
 
 // Get all notes for user
@@ -14,7 +13,7 @@ const getNotes = async (req, res) => {
 
 // Create new note
 const createNote = async (req, res) => {
-  const { title, content, subject, tags } = req.body;
+  const { title, content, subject, tags, link } = req.body; // ✅ include link
 
   try {
     const note = new Note({
@@ -22,6 +21,7 @@ const createNote = async (req, res) => {
       content,
       subject,
       tags,
+      link, // ✅ store link
       user: req.user.id,
     });
 
@@ -34,19 +34,20 @@ const createNote = async (req, res) => {
 };
 
 // Update a note
-// PATCH /api/notes/:id
 const updateNote = async (req, res) => {
   const { id } = req.params;
-  const { title, content, subject, tags } = req.body;
+  const { title, content, subject, tags, link } = req.body; // ✅ include link
 
   try {
     const note = await Note.findById(id);
     if (!note) return res.status(404).json({ error: "Note not found" });
 
+    // Update only provided fields
     if (title !== undefined) note.title = title;
     if (content !== undefined) note.content = content;
     if (subject !== undefined) note.subject = subject;
-    if (tags !== undefined) note.tags = tags; // update tags here!
+    if (tags !== undefined) note.tags = tags;
+    if (link !== undefined) note.link = link; // ✅ update link
 
     await note.save();
     res.json(note);
@@ -59,7 +60,10 @@ const updateNote = async (req, res) => {
 // Delete a note
 const deleteNote = async (req, res) => {
   try {
-    const note = await Note.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    const note = await Note.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user.id,
+    });
     if (!note) {
       return res.status(404).json({ message: "Note not found or unauthorized" });
     }
@@ -69,9 +73,10 @@ const deleteNote = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 // Update tags only
 const updateNoteTags = async (req, res) => {
-  const { tags } = req.body; // expecting array of tags
+  const { tags } = req.body;
   try {
     const updated = await Note.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
@@ -88,4 +93,10 @@ const updateNoteTags = async (req, res) => {
   }
 };
 
-module.exports = { getNotes, createNote, updateNote, deleteNote, updateNoteTags };
+module.exports = {
+  getNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+  updateNoteTags,
+};

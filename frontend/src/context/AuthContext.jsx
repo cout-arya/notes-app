@@ -1,6 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
-import React from 'react';
 
 const AuthContext = createContext();
 
@@ -10,14 +9,13 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    
 
     if (token) {
-      // 👇✅ Set default headers globally
+      // ✅ Set Authorization header globally
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       axios
-        .get("/api/auth/me")
+        .get("http://localhost:5000/api/auth/me") // ✅ use full backend URL
         .then((res) => {
           console.log("✅ Me route response:", res.data);
           setUser(res.data);
@@ -35,8 +33,6 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem("token", userData.token);
-
-    // 👇✅ Also set default headers after login
     axios.defaults.headers.common["Authorization"] = `Bearer ${userData.token}`;
   };
 

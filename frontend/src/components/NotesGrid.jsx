@@ -37,6 +37,7 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
     content: "",
     subject: "",
     tags: [],
+    link: "",
   });
 
   useEffect(() => {
@@ -51,6 +52,7 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
         content: activeNote.content || "",
         subject: activeNote.subject || "",
         tags: activeNote.tags || [],
+        link: activeNote.link || "",
       });
     }
   }, [activeNote]);
@@ -70,6 +72,7 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
           content: editData.content,
           subject: editData.subject,
           tags: editData.tags,
+          link: editData.link,
         }),
       });
 
@@ -91,7 +94,6 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
       if (onUpdateTags) {
         onUpdateTags(updatedNote._id, updatedNote.tags);
       }
-
     } catch (err) {
       console.error(err);
       alert("Failed to update note");
@@ -127,7 +129,9 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
                 </span>
               ))}
             </div>
-            <span className="italic text-white/80">{note.subject || "No Subject"}</span>
+            <span className="italic text-white/80">
+              {note.subject || "No Subject"}
+            </span>
           </div>
         </div>
       ))}
@@ -141,7 +145,7 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
           }}
         >
           <div
-            className="bg-[#0f111a] text-white rounded-xl w-full max-w-2xl h-[90vh] overflow-y-auto p-6 relative"
+            className="bg-[#0f111a] text-white rounded-none w-full h-screen overflow-y-auto p-8 relative flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -167,6 +171,17 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
                     className="w-full mb-4 p-2 rounded bg-[#1f2937] text-white border border-gray-600"
                     placeholder="Title"
                   />
+
+                  <input
+                    type="url"
+                    value={editData.link}
+                    onChange={(e) =>
+                      setEditData({ ...editData, link: e.target.value })
+                    }
+                    className="w-full mb-4 p-2 rounded bg-[#1f2937] text-white border border-gray-600"
+                    placeholder="Reference link (optional)"
+                  />
+
                   <textarea
                     value={editData.content}
                     onChange={(e) =>
@@ -211,82 +226,78 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
                               }
                             }}
                           />
-                          <span
-                            className={`capitalize px-2 py-0.5 rounded ${tagColors[tag]}`}
-                          >
-                            {tag}
-                          </span>
+                          {tag}
                         </label>
                       ))}
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
+                  <div className="flex justify-end gap-3">
                     <button
-                      onClick={updateNote}
-                      className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded font-semibold"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditMode(false);
-                        setEditData({
-                          title: activeNote.title,
-                          content: activeNote.content,
-                          subject: activeNote.subject,
-                          tags: activeNote.tags || [],
-                        });
-                      }}
-                      className="flex-1 bg-gray-600 hover:bg-gray-700 py-2 rounded font-semibold"
+                      onClick={() => setEditMode(false)}
+                      className="px-4 py-2 bg-gray-500 rounded"
                     >
                       Cancel
+                    </button>
+                    <button
+                      onClick={updateNote}
+                      className="px-4 py-2 bg-green-600 rounded"
+                    >
+                      Save
                     </button>
                   </div>
                 </>
               ) : (
                 <>
-                  <h2 className="text-2xl font-bold mb-4">{activeNote.title}</h2>
-                  <p className="mb-4 whitespace-pre-wrap text-gray-200">
+                  <h2 className="text-3xl font-bold mb-4">
+                    {activeNote.title}
+                  </h2>
+
+                  {activeNote.link && (
+                    <a
+                      href={activeNote.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mb-4 text-blue-400 hover:underline"
+                    >
+                      🔗 Open Attached Link
+                    </a>
+                  )}
+
+                  <p className="whitespace-pre-line mb-4 text-white/90 leading-relaxed">
                     {activeNote.content}
                   </p>
+                  <p className="text-sm text-white/70 mb-4">
+                    <strong>Subject:</strong>{" "}
+                    {activeNote.subject || "No Subject"}
+                  </p>
 
-                  <div className="mb-4 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mb-6">
                     {activeNote.tags?.map((tag) => (
                       <span
                         key={tag}
-                        className={`${tagColors[tag]} text-white px-3 py-1 rounded capitalize`}
+                        className={`${tagColors[tag]} text-white px-3 py-1 rounded text-sm`}
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
 
-                  <div className="text-sm text-gray-400 italic mb-6">
-                    Subject: {activeNote.subject || "No Subject"}
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-6">
-                    <span>{activeNote.date || ""}</span>
-                    <span>{activeNote.time || ""}</span>
-                  </div>
-
-                  <div className="flex gap-4">
+                  <div className="flex justify-end gap-3 mr-8">
                     <button
-                      onClick={() => setEditMode(true)}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        onDeleteNote(activeNote._id);
-                        setActiveNote(null);
-                      }}
-                      className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded font-semibold"
+                      onClick={() => onDeleteNote(activeNote._id)}
+                      className="px-4 py-2 bg-red-600 rounded"
                     >
                       Delete
                     </button>
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="px-4 py-2 bg-blue-600 rounded"
+                    >
+                      Edit
+                    </button>
                   </div>
+
                 </>
               )}
             </div>

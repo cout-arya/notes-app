@@ -9,6 +9,7 @@ import Notes from "./pages/Notes";
 
 // Components
 import PrivateRoute from "./components/PrivateRoute";
+import FloatingChatBot from "./components/FloatingChatBot";
 
 function NotesLayout() {
   return (
@@ -35,6 +36,7 @@ function App() {
           element={
             <PrivateRoute>
               <NotesLayout />
+              <FloatingChatBot />
             </PrivateRoute>
           }
         />
