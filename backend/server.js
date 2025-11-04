@@ -1,9 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const noteRoutes = require('./routes/noteRoutes');
-const chatRoutes  = require("./routes/chat.js");
+const authRoutes = require('./api/authRoutes');
+const noteRoutes = require('./api/noteRoutes');
+const chatRoutes  = require("./api/chat.js");
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 connectDB();
@@ -19,7 +19,7 @@ app.use(cors({
 
 app.use('/api/auth', authRoutes);
 app.use("/api/notes", noteRoutes);
-const chatRouter = require("./routes/chat.js");
+const chatRouter = require("./api/chat.js");
 app.use("/api", chatRouter);
 
 const PORT = process.env.PORT || 5000;
