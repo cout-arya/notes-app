@@ -1,7 +1,7 @@
-const Note = require("../models/Note");
+import Note from "../models/Note.js";
 
 // Get all notes for user
-const getNotes = async (req, res) => {
+export const getNotes = async (req, res) => {
   try {
     const notes = await Note.find({ user: req.user.id }).sort({ createdAt: -1 });
     res.json(notes);
@@ -12,8 +12,8 @@ const getNotes = async (req, res) => {
 };
 
 // Create new note
-const createNote = async (req, res) => {
-  const { title, content, subject, tags, link } = req.body; // ✅ include link
+export const createNote = async (req, res) => {
+  const { title, content, subject, tags, link } = req.body;
 
   try {
     const note = new Note({
@@ -21,7 +21,7 @@ const createNote = async (req, res) => {
       content,
       subject,
       tags,
-      link, // ✅ store link
+      link,
       user: req.user.id,
     });
 
@@ -34,20 +34,19 @@ const createNote = async (req, res) => {
 };
 
 // Update a note
-const updateNote = async (req, res) => {
+export const updateNote = async (req, res) => {
   const { id } = req.params;
-  const { title, content, subject, tags, link } = req.body; // ✅ include link
+  const { title, content, subject, tags, link } = req.body;
 
   try {
     const note = await Note.findById(id);
     if (!note) return res.status(404).json({ error: "Note not found" });
 
-    // Update only provided fields
     if (title !== undefined) note.title = title;
     if (content !== undefined) note.content = content;
     if (subject !== undefined) note.subject = subject;
     if (tags !== undefined) note.tags = tags;
-    if (link !== undefined) note.link = link; // ✅ update link
+    if (link !== undefined) note.link = link;
 
     await note.save();
     res.json(note);
@@ -58,7 +57,7 @@ const updateNote = async (req, res) => {
 };
 
 // Delete a note
-const deleteNote = async (req, res) => {
+export const deleteNote = async (req, res) => {
   try {
     const note = await Note.findOneAndDelete({
       _id: req.params.id,
@@ -75,7 +74,7 @@ const deleteNote = async (req, res) => {
 };
 
 // Update tags only
-const updateNoteTags = async (req, res) => {
+export const updateNoteTags = async (req, res) => {
   const { tags } = req.body;
   try {
     const updated = await Note.findOneAndUpdate(
@@ -91,12 +90,4 @@ const updateNoteTags = async (req, res) => {
     console.error("Note tags update error:", err);
     res.status(500).json({ error: "Failed to update tags" });
   }
-};
-
-module.exports = {
-  getNotes,
-  createNote,
-  updateNote,
-  deleteNote,
-  updateNoteTags,
 };

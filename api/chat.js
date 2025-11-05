@@ -1,36 +1,39 @@
-const express = require("express");
-const axios = require("axios");
-const router = express.Router();
+import axios from "axios";
 
-router.post("/chat", async (req, res) => {
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "POST requests only" });
+  }
+
   const { message, type } = req.body;
 
-  if (!message || !type) return res.status(400).json({ error: "Message and type required" });
+  if (!message || !type) {
+    return res.status(400).json({ error: "Message and type required" });
+  }
 
   let prompt = "";
-switch(type) {
-  case "summary":
-    prompt = `Summarize the following notes in 3-5 bullet points:\n${message}`;
-    break;
+  switch (type) {
+    case "summary":
+      prompt = `Summarize the following notes in 3-5 bullet points:\n${message}`;
+      break;
 
-  case "quiz":
-    prompt = `Create 5 multiple-choice questions with answers based on the following notes. 
+    case "quiz":
+      prompt = `Create 5 multiple-choice questions with answers based on the following notes. 
 Return them as JSON in this format:
 [
   {"question": "Question text", "options": ["A","B","C","D"], "answer": "B"},
   ...
 ]
 Notes: ${message}`;
-    break;
+      break;
 
-  case "explain":
-    prompt = `Explain the following topic in simple terms with examples:\n${message}`;
-    break;
+    case "explain":
+      prompt = `Explain the following topic in simple terms with examples:\n${message}`;
+      break;
 
-  default:
-    prompt = message;
-}
-
+    default:
+      prompt = message;
+  }
 
   try {
     const response = await axios.post(
@@ -42,17 +45,17 @@ Notes: ${message}`;
       },
       {
         headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
         },
       }
     );
 
-    res.json({ reply: response.data.choices[0].message.content });
+    return res.status(200).json({
+      reply: response.data.choices[0].message.content,
+    });
   } catch (error) {
     console.error(error.response?.data || error.message);
-    res.status(500).json({ error: "Something went wrong" });
+    return res.status(500).json({ error: "Something went wrong" });
   }
-});
-
-module.exports = router;
+}

@@ -1,10 +1,13 @@
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { generateAccessToken, generateRefreshToken } = require("../utils/generateTokens");
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/generateTokens.js";
 
 // SIGNUP
-const signup = async (req, res) => {
+export const signup = async (req, res) => {
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
@@ -31,7 +34,7 @@ const signup = async (req, res) => {
 };
 
 // LOGIN
-const login = async (req, res) => {
+export const login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
@@ -54,23 +57,19 @@ const login = async (req, res) => {
       return res.status(400).json({ msg: "Invalid Credentials" });
     }
 
-    // Generate tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    // Save refresh token in DB (optional, useful for logout/revoke)
     user.refreshToken = refreshToken;
     await user.save();
 
-    // Send refresh token in httpOnly cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,     // set to true in production (HTTPS)
+      secure: true,
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // Send access token + user details in response
     res.json({
       accessToken,
       user: {
@@ -86,7 +85,7 @@ const login = async (req, res) => {
 };
 
 // REFRESH TOKEN
-const refresh = async (req, res) => {
+export const refresh = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) {
     return res.status(401).json({ error: "No refresh token provided" });
@@ -94,10 +93,7 @@ const refresh = async (req, res) => {
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-
-    // Issue new access token
     const newAccessToken = generateAccessToken(decoded.user);
-
     res.json({ accessToken: newAccessToken });
   } catch (err) {
     console.error("Refresh token error:", err);
@@ -106,7 +102,7 @@ const refresh = async (req, res) => {
 };
 
 // GET LOGGED-IN USER
-const me = async (req, res) => {
+export const me = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     res.json(user);
@@ -115,5 +111,3 @@ const me = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
-module.exports = { signup, login, me, refresh };

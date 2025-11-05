@@ -1,13 +1,14 @@
-const express = require("express");
-const router = express.Router();
-const {
+import express from "express";
+import {
   getNotes,
   createNote,
   updateNote,
   deleteNote,
   updateNoteTags,
-} = require("./controllers/noteController");
-const requireAuth = require("./middleware/authMiddleware");
+} from "./controllers/noteController.js";
+import requireAuth from "./middleware/authMiddleware.js";
+
+const router = express.Router();
 
 // Protect all note routes
 router.use(requireAuth);
@@ -18,4 +19,4 @@ router.patch("/:id", updateNote);
 router.delete("/:id", deleteNote);
 router.patch("/:id/tags", updateNoteTags);
 
-module.exports = router;
+export default router;
