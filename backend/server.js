@@ -20,7 +20,7 @@ app.use(cors({
 app.use('/api/auth', authRoutes);
 app.use("/api/notes", noteRoutes);
 const chatRouter = require("./chat.js");
-app.use("/api", chatRouter);
+app.use("/api/chat", chatRouter);
 
 const PORT = process.env.PORT || 5000;
 
