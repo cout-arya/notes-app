@@ -11,18 +11,18 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem("token");
 
     if (token) {
-      // ✅ Set Authorization header globally
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
       axios
-        .get("http://localhost:5000/api/auth/me") // ✅ use full backend URL
+        .get("http://localhost:5000/api/auth/me")
         .then((res) => {
-          console.log("✅ Me route response:", res.data);
+          console.log("✅ Auth restored:", res.data);
           setUser(res.data);
         })
         .catch((err) => {
-          console.error("❌ Auth restore failed:", err);
+          console.error("❌ Auth restore failed:", err.response?.data || err.message);
           localStorage.removeItem("token");
+          delete axios.defaults.headers.common["Authorization"];
         })
         .finally(() => setLoading(false));
     } else {
@@ -30,16 +30,16 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem("token", userData.token);
-    axios.defaults.headers.common["Authorization"] = `Bearer ${userData.token}`;
+  const login = ({ token, user }) => {
+    localStorage.setItem("token", token);
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    setUser(user);
   };
 
   const logout = () => {
-    setUser(null);
     localStorage.removeItem("token");
     delete axios.defaults.headers.common["Authorization"];
+    setUser(null);
   };
 
   return (

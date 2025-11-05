@@ -11,41 +11,64 @@ const FloatingChatBot = () => {
 
   const toggleChat = () => setIsOpen(!isOpen);
 
-  const sendMessage = async () => {
-    if (!input) return;
-    setChat([...chat, { sender: "user", text: input, type: "user" }]);
+const sendMessage = async () => {
+  if (!input) return;
 
-    try {
-      const res = await fetch("http://localhost:5000/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input, type }),
-      });
-      const data = await res.json();
+  // Add user message
+  setChat((prev) => [...prev, { sender: "user", text: input, type: "user" }]);
 
-      let formattedReply = data.reply;
+  try {
+    const res = await fetch("http://localhost:5000/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: input, type }),
+    });
 
-      if (type === "quiz") {
-        try {
-          const quiz = JSON.parse(data.reply);
-          formattedReply = quiz;
-        } catch (e) {
-          console.error("Failed to parse quiz JSON:", e);
-        }
-      } else if (type === "summary" || type === "explain") {
-        formattedReply = data.reply.split("\n").filter((line) => line.trim() !== "");
-      }
+    const data = await res.json();
 
-      setChat((prev) => [...prev, { sender: "bot", text: formattedReply, type }]);
-      setInput("");
-    } catch (error) {
-      console.error(error);
+    // 🛡️ Check for server error
+    if (!res.ok || !data.reply) {
+      console.error("❌ Chat API failed:", data);
       setChat((prev) => [
         ...prev,
-        { sender: "bot", text: "Something went wrong. Try again.", type: "error" },
+        { sender: "bot", text: "⚠️ The AI service is currently unavailable. Please try again later.", type: "error" },
       ]);
+      return;
     }
-  };
+
+    let formattedReply = data.reply;
+
+    // 🧠 Parse based on type
+    if (type === "quiz") {
+      try {
+        // Handle markdown-style responses with ```json``` blocks
+        if (formattedReply.includes("```")) {
+          formattedReply = formattedReply.split("```json")[1]?.split("```")[0] || formattedReply;
+        }
+        formattedReply = JSON.parse(formattedReply);
+      } catch (e) {
+        console.error("Failed to parse quiz JSON:", e, formattedReply);
+        formattedReply = "❌ Could not generate quiz. Try again with simpler notes.";
+      }
+    } else if (type === "summary" || type === "explain") {
+      // Safely split into lines
+      formattedReply = formattedReply
+        ?.split("\n")
+        .filter((line) => line.trim() !== "") || ["(No response received.)"];
+    }
+
+    // Add bot message
+    setChat((prev) => [...prev, { sender: "bot", text: formattedReply, type }]);
+    setInput("");
+  } catch (error) {
+    console.error("❌ Network/Chat error:", error);
+    setChat((prev) => [
+      ...prev,
+      { sender: "bot", text: "⚠️ Something went wrong. Please check your connection.", type: "error" },
+    ]);
+  }
+};
+
 
   const toggleAnswer = (key) => {
     setRevealedAnswers((prev) => ({
