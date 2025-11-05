@@ -1,8 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const connectDB = require('./config/db');
-const authRoutes = require('./api/authRoutes');
-const noteRoutes = require('./api/noteRoutes');
+const authRoutes = require('./authRoutes');
+const noteRoutes = require('./noteRoutes');
 const chatRoutes  = require("./chat.js");
 const cors = require('cors');
 const cookieParser = require('cookie-parser');

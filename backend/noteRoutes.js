@@ -6,8 +6,8 @@ const {
   updateNote,
   deleteNote,
   updateNoteTags,
-} = require("../controllers/noteController");
-const requireAuth = require("../middleware/authMiddleware");
+} = require("./controllers/noteController");
+const requireAuth = require("./middleware/authMiddleware");
 
 // Protect all note routes
 router.use(requireAuth);
