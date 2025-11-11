@@ -60,43 +60,38 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
   const updateNote = async () => {
     const token = localStorage.getItem("token");
 
+    if (!token) {
+      alert("You are not logged in. Please log in again.");
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/notes/${activeNote._id}`, {
+      const res = await fetch(`http://localhost:5000/api/notes/${activeNote._id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: editData.title,
-          content: editData.content,
-          subject: editData.subject,
-          tags: editData.tags,
-          link: editData.link,
-        }),
+        body: JSON.stringify(editData),
       });
 
       if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Update failed:", errorText);
-        throw new Error("Failed to update note");
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Update failed:", errorData);
+        throw new Error(errorData.error || "Failed to update note");
       }
 
       const updatedNote = await res.json();
-
       setAllNotes((prev) =>
         prev.map((note) => (note._id === updatedNote._id ? updatedNote : note))
       );
       setActiveNote(updatedNote);
       setEditMode(false);
 
-      // ✅ Update parent so progress updates instantly
-      if (onUpdateTags) {
-        onUpdateTags(updatedNote._id, updatedNote.tags);
-      }
+      if (onUpdateTags) onUpdateTags(updatedNote._id, updatedNote.tags);
     } catch (err) {
-      console.error(err);
-      alert("Failed to update note");
+      console.error("Error updating note:", err.message);
+      alert(err.message);
     }
   };
 
@@ -191,6 +186,7 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
                     rows={6}
                     placeholder="Content"
                   />
+
                   <input
                     type="text"
                     value={editData.subject}
@@ -205,26 +201,18 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
                     <label className="block mb-1 font-semibold">Tags:</label>
                     <div className="flex gap-4">
                       {availableTags.map((tag) => (
-                        <label
-                          key={tag}
-                          className="flex items-center gap-1 cursor-pointer select-none"
-                        >
+                        <label key={tag} className="flex items-center gap-1 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={editData.tags.includes(tag)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setEditData({
-                                  ...editData,
-                                  tags: [...editData.tags, tag],
-                                });
-                              } else {
-                                setEditData({
-                                  ...editData,
-                                  tags: editData.tags.filter((t) => t !== tag),
-                                });
-                              }
-                            }}
+                            onChange={(e) =>
+                              setEditData({
+                                ...editData,
+                                tags: e.target.checked
+                                  ? [...editData.tags, tag]
+                                  : editData.tags.filter((t) => t !== tag),
+                              })
+                            }
                           />
                           {tag}
                         </label>
@@ -249,9 +237,7 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
                 </>
               ) : (
                 <>
-                  <h2 className="text-3xl font-bold mb-4">
-                    {activeNote.title}
-                  </h2>
+                  <h2 className="text-3xl font-bold mb-4">{activeNote.title}</h2>
 
                   {activeNote.link && (
                     <a
@@ -297,7 +283,6 @@ const NotesGrid = ({ notes, onDeleteNote, onUpdateTags }) => {
                       Edit
                     </button>
                   </div>
-
                 </>
               )}
             </div>

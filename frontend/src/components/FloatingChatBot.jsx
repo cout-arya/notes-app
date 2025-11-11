@@ -11,64 +11,97 @@ const FloatingChatBot = () => {
 
   const toggleChat = () => setIsOpen(!isOpen);
 
-const sendMessage = async () => {
-  if (!input) return;
+  const sendMessage = async () => {
+    if (!input.trim()) return;
 
-  // Add user message
-  setChat((prev) => [...prev, { sender: "user", text: input, type: "user" }]);
+    const token = localStorage.getItem("token");
 
-  try {
-    const res = await fetch("http://localhost:5000/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: input, type }),
-    });
+    // Add user message
+    setChat((prev) => [...prev, { sender: "user", text: input, type: "user" }]);
+    setInput("");
 
-    const data = await res.json();
+    try {
+      const res = await fetch("http://localhost:5000/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }), // ✅ Include token if logged in
+        },
+        body: JSON.stringify({ message: input, type }),
+      });
 
-    // 🛡️ Check for server error
-    if (!res.ok || !data.reply) {
-      console.error("❌ Chat API failed:", data);
+      const data = await res.json();
+
+      // Handle unauthorized user (401/403)
+      if (res.status === 401 || res.status === 403) {
+        setChat((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: "🚫 You are not logged in or your session expired. Please log in again.",
+            type: "error",
+          },
+        ]);
+        return;
+      }
+
+      // Handle missing or failed replies
+      if (!res.ok || !data.reply) {
+        console.error("❌ Chat API failed:", data);
+        setChat((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text:
+              "⚠️ The AI service is currently unavailable. Please try again later.",
+            type: "error",
+          },
+        ]);
+        return;
+      }
+
+      let formattedReply = data.reply;
+
+      // 🧠 Handle response based on type
+      if (type === "quiz") {
+        try {
+          if (formattedReply.includes("```")) {
+            formattedReply =
+              formattedReply.split("```json")[1]?.split("```")[0] ||
+              formattedReply;
+          }
+          formattedReply = JSON.parse(formattedReply);
+        } catch (e) {
+          console.error("Failed to parse quiz JSON:", e);
+          formattedReply = [
+            {
+              question: "Error generating quiz.",
+              options: ["Try again later."],
+              answer: "N/A",
+            },
+          ];
+        }
+      } else if (type === "summary" || type === "explain") {
+        formattedReply =
+          formattedReply
+            ?.split("\n")
+            .filter((line) => line.trim() !== "") || ["(No response received.)"];
+      }
+
+      // Add bot response
+      setChat((prev) => [...prev, { sender: "bot", text: formattedReply, type }]);
+    } catch (error) {
+      console.error("❌ Network/Chat error:", error);
       setChat((prev) => [
         ...prev,
-        { sender: "bot", text: "⚠️ The AI service is currently unavailable. Please try again later.", type: "error" },
+        {
+          sender: "bot",
+          text: "⚠️ Something went wrong. Please check your internet connection or backend server.",
+          type: "error",
+        },
       ]);
-      return;
     }
-
-    let formattedReply = data.reply;
-
-    // 🧠 Parse based on type
-    if (type === "quiz") {
-      try {
-        // Handle markdown-style responses with ```json``` blocks
-        if (formattedReply.includes("```")) {
-          formattedReply = formattedReply.split("```json")[1]?.split("```")[0] || formattedReply;
-        }
-        formattedReply = JSON.parse(formattedReply);
-      } catch (e) {
-        console.error("Failed to parse quiz JSON:", e, formattedReply);
-        formattedReply = "❌ Could not generate quiz. Try again with simpler notes.";
-      }
-    } else if (type === "summary" || type === "explain") {
-      // Safely split into lines
-      formattedReply = formattedReply
-        ?.split("\n")
-        .filter((line) => line.trim() !== "") || ["(No response received.)"];
-    }
-
-    // Add bot message
-    setChat((prev) => [...prev, { sender: "bot", text: formattedReply, type }]);
-    setInput("");
-  } catch (error) {
-    console.error("❌ Network/Chat error:", error);
-    setChat((prev) => [
-      ...prev,
-      { sender: "bot", text: "⚠️ Something went wrong. Please check your connection.", type: "error" },
-    ]);
-  }
-};
-
+  };
 
   const toggleAnswer = (key) => {
     setRevealedAnswers((prev) => ({
@@ -91,7 +124,7 @@ const sendMessage = async () => {
         <ChatBubbleOvalLeftIcon className="w-8 h-8" />
       </button>
 
-      {/* Background Overlay */}
+      {/* Overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
@@ -113,7 +146,7 @@ const sendMessage = async () => {
             </button>
           </div>
 
-          {/* Chat messages */}
+          {/* Chat Messages */}
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
             {chat.map((c, i) => (
               <div
@@ -124,7 +157,6 @@ const sendMessage = async () => {
                     : "bg-gray-200 text-left"
                 }`}
               >
-                {/* Quiz Type */}
                 {c.type === "quiz" && Array.isArray(c.text) ? (
                   <div className="space-y-3">
                     {c.text.map((q, idx) => {
@@ -143,15 +175,15 @@ const sendMessage = async () => {
                             ))}
                           </ul>
 
-                          {/* Toggle Button */}
                           <button
                             onClick={() => toggleAnswer(key)}
                             className="text-blue-600 text-sm font-medium hover:underline"
                           >
-                            {revealedAnswers[key] ? "Hide Answer" : "Show Answer"}
+                            {revealedAnswers[key]
+                              ? "Hide Answer"
+                              : "Show Answer"}
                           </button>
 
-                          {/* Animated Reveal */}
                           <div
                             className={`transition-all duration-300 ease-in-out overflow-hidden ${
                               revealedAnswers[key]
@@ -168,14 +200,12 @@ const sendMessage = async () => {
                     })}
                   </div>
                 ) : Array.isArray(c.text) ? (
-                  // Summary or Explain
                   <ul className="list-disc list-inside space-y-1">
                     {c.text.map((line, idx) => (
                       <li key={idx}>{line}</li>
                     ))}
                   </ul>
                 ) : (
-                  // Default plain text
                   <p>{c.text}</p>
                 )}
               </div>
@@ -183,7 +213,7 @@ const sendMessage = async () => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input area */}
+          {/* Input Area */}
           <div className="flex gap-3 p-4 border-t border-gray-300">
             <select
               value={type}

@@ -1,19 +1,28 @@
 import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config(); // ensures .env loads when running locally
 
 export default async function handler(req, res) {
-  // ✅ Only allow POST
+  // ✅ Allow only POST
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Only POST allowed" });
+    return res.status(405).json({ error: "Only POST method allowed" });
   }
 
   const { message, type } = req.body;
 
   // ✅ Validate input
   if (!message || !type) {
-    return res.status(400).json({ error: "Message and type required" });
+    return res.status(400).json({ error: "Message and type are required" });
   }
 
-  // ✅ Build prompt dynamically based on type
+  // ✅ Ensure API key is available
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.error("❌ OPENROUTER_API_KEY is missing in .env");
+    return res.status(500).json({ error: "Server misconfiguration: API key missing" });
+  }
+
+  // ✅ Build prompt based on type
   let prompt;
   switch (type) {
     case "summary":
@@ -37,47 +46,54 @@ Notes: ${message}`;
   }
 
   try {
-    // ✅ Pick correct Referer based on environment
-    const referer =
-      process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}` // Vercel production URL
-        : "http://localhost:5173"; // Local dev frontend
+    // ✅ Determine correct Referer for OpenRouter header
+    const referer = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:5173";
 
-    // ✅ Make request to OpenRouter
+    // ✅ Send request to OpenRouter API
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "gpt-4o-mini", // ✅ A lightweight & fast model
+        model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, // ✅ Must exist
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": referer, // ✅ Required by OpenRouter
-          "X-Title": "Notes AI Assistant", // ✅ Your app name
+          "HTTP-Referer": referer,
+          "X-Title": "Notes AI Assistant",
         },
       }
     );
 
-    const reply = response.data?.choices?.[0]?.message?.content;
+    const reply = response.data?.choices?.[0]?.message?.content?.trim();
 
     if (!reply) {
-      throw new Error("No response returned by model");
+      throw new Error("No response received from OpenRouter model");
     }
 
+    // ✅ Return successful response
     return res.status(200).json({ reply });
   } catch (error) {
-    console.error("❌ Chat route error:", error.response?.data || error.message);
+    // ✅ Detailed logging for debugging
+    console.error(
+      "❌ Chat route error:",
+      error.response?.data || error.message || error
+    );
 
-    return res.status(error.response?.status || 500).json({
+    const status = error.response?.status || 500;
+    const message =
+      error.response?.data?.error?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Unknown OpenRouter error";
+
+    return res.status(status).json({
       success: false,
-      message:
-        error.response?.data?.error?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        "Unknown OpenRouter error",
+      message,
       details: error.response?.data || null,
     });
   }

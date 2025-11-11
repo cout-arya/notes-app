@@ -6,6 +6,11 @@ import {
   generateRefreshToken,
 } from "../utils/generateTokens.js";
 
+// ✅ Helper: generate JWT manually if needed
+const createToken = (user) => {
+  return jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+};
+
 // SIGNUP
 export const signup = async (req, res) => {
   const { username, email, password } = req.body;
@@ -37,13 +42,13 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
   if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
     console.error("JWT secrets not set");
     return res.status(500).json({ error: "Server configuration error" });
-  }
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
   }
 
   try {
@@ -57,19 +62,23 @@ export const login = async (req, res) => {
       return res.status(400).json({ msg: "Invalid Credentials" });
     }
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    // ✅ Generate access and refresh tokens
+    const accessToken = generateAccessToken({ id: user._id });
+    const refreshToken = generateRefreshToken({ id: user._id });
 
+    // ✅ Save refresh token in DB
     user.refreshToken = refreshToken;
     await user.save();
 
+    // ✅ Send refresh token as cookie (optional)
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: false, // change to true in production
       sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    // ✅ Send access token and user info
     res.json({
       accessToken,
       user: {
@@ -93,7 +102,7 @@ export const refresh = async (req, res) => {
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const newAccessToken = generateAccessToken(decoded.user);
+    const newAccessToken = generateAccessToken({ id: decoded.id });
     res.json({ accessToken: newAccessToken });
   } catch (err) {
     console.error("Refresh token error:", err);
@@ -104,7 +113,8 @@ export const refresh = async (req, res) => {
 // GET LOGGED-IN USER
 export const me = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user._id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (err) {
     console.error(err);
